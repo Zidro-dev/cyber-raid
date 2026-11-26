@@ -79,10 +79,24 @@ export async function answerPreCheckoutQuery(
   });
 }
 
+export interface InlineKeyboardButton {
+  text: string;
+  web_app?: { url: string };
+  url?: string;
+  callback_data?: string;
+}
+
+export interface InlineKeyboardMarkup {
+  inline_keyboard: InlineKeyboardButton[][];
+}
+
 export async function sendTelegramMessage(
   chatId: number,
   text: string,
-  options?: { parseMode?: "HTML" | "MarkdownV2" }
+  options?: {
+    parseMode?: "HTML" | "MarkdownV2";
+    replyMarkup?: InlineKeyboardMarkup;
+  }
 ): Promise<boolean> {
   try {
     if (!process.env.BOT_TOKEN) {
@@ -94,6 +108,7 @@ export async function sendTelegramMessage(
         chat_id: chatId,
         text,
         ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(options?.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
       },
       4000
     );

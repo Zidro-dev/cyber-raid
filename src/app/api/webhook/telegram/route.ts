@@ -37,11 +37,15 @@ interface TelegramUpdate {
   pre_checkout_query?: TelegramPreCheckoutQuery;
   message?: {
     message_id?: number;
-    from?: { id: number };
+    text?: string;
+    from?: { id: number; first_name?: string; username?: string };
     chat?: { id: number };
     successful_payment?: TelegramSuccessfulPayment;
   };
 }
+
+const MINI_APP_URL = "https://cyber-raid-green.vercel.app";
+const LAUNCH_COMMAND_REGEX = /^\/(?:start|play)(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$/i;
 
 function parseInvoicePayload(raw: string): InvoicePayload | null {
   try {
@@ -288,6 +292,32 @@ export async function POST(req: Request) {
         // Roll back the processing row so Telegram retries can cleanly succeed
         await supabaseAdmin.from("transactions").delete().eq("id", txId);
         throw fulfillError;
+      }
+    }
+
+    // 3. Bot command handling (/start, /start <ref>, /play)
+    const messageText = update.message?.text?.trim();
+    const chatId = update.message?.chat?.id ?? update.message?.from?.id;
+    if (messageText && chatId) {
+      const commandMatch = messageText.match(LAUNCH_COMMAND_REGEX);
+      if (commandMatch) {
+        const referralCode = commandMatch[1]?.trim();
+        const welcomeText = referralCode
+          ? `⚡ NEURAL LINK ONLINE — Welcome to CYBER RAID.\n\nUpgrade your credit farm, crack Gacha capsules, and raid rival sectors for loot. Referral signal [${referralCode}] detected.\n\nTap below to deploy into the grid:`
+          : `⚡ NEURAL LINK ONLINE — Welcome to CYBER RAID.\n\nUpgrade your credit farm, crack Gacha capsules, and raid rival sectors for loot.\n\nTap below to deploy into the grid:`;
+
+        await sendTelegramMessage(chatId, welcomeText, {
+          replyMarkup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "⚡ Launch Neon Raid",
+                  web_app: { url: MINI_APP_URL },
+                },
+              ],
+            ],
+          },
+        });
       }
     }
 
